@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lampshade Generator — Non-Planar 3D Print</title>
+    <style>
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface2: #0f3460;
+    --accent: #e94560;
+    --accent2: #ff6b6b;
+    --text: #eee;
+    --text-dim: #999;
+    --radius: 8px;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding: 12px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--surface2);
+}
+
+header h1 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+header .subtitle {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+}
+
+.main-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Controls Panel */
+#controls {
+    width: 320px;
+    min-width: 320px;
+    overflow-y: auto;
+    padding: 16px;
+    background: var(--surface);
+    border-right: 1px solid var(--surface2);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#controls::-webkit-scrollbar {
+    width: 6px;
+}
+
+#controls::-webkit-scrollbar-thumb {
+    background: var(--surface2);
+    border-radius: 3px;
+}
+
+.control-group {
+    background: rgba(255,255,255,0.03);
+    border-radius: var(--radius);
+    padding: 12px;
+}
+
+.control-group h2 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 10px;
+}
+
+.control-group label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    margin-bottom: 8px;
+    gap: 4px;
+}
+
+.control-group label:last-child {
+    margin-bottom: 0;
+}
+
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--surface2);
+    outline: none;
+    margin-top: 4px;
+    order: 3;
+    flex-basis: 100%;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+}
+
+select {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+}
+
+.val {
+    font-size: 0.78rem;
+    color: var(--accent2);
+    font-weight: 600;
+    min-width: 36px;
+    text-align: right;
+}
+
+/* Actions */
+.actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.btn {
+    flex: 1;
+    padding: 10px 14px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn.primary {
+    background: var(--accent);
+    color: #fff;
+}
+
+.btn.primary:hover {
+    background: var(--accent2);
+}
+
+.btn:not(.primary) {
+    background: var(--surface2);
+    color: var(--text);
+}
+
+.btn:not(.primary):hover:not(:disabled) {
+    background: #1a4a8a;
+}
+
+.btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Stats */
+.stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 12px;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.03);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    margin-top: 8px;
+}
+
+.stats span {
+    color: var(--text);
+    font-weight: 600;
+}
+
+/* Viewport */
+#viewport-container {
+    flex: 1;
+    position: relative;
+    background: #111;
+}
+
+#viewport {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#viewport-hint {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.3);
+    pointer-events: none;
+}
+
+#view-toggles {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 2px;
+    background: rgba(0,0,0,0.6);
+    border-radius: 6px;
+    padding: 3px;
+}
+
+.view-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 6px 16px;
+    font-size: 0.78rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.view-btn.active {
+    background: var(--accent);
+    color: #fff;
+}
+
+@media (max-width: 800px) {
+    .main-layout {
+        flex-direction: column;
+    }
+    #controls {
+        width: 100%;
+        min-width: unset;
+        max-height: 45vh;
+        border-right: none;
+        border-bottom: 1px solid var(--surface2);
+    }
+}
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Lampshade Generator</h1>
+            <span class="subtitle">Non-Planar G-code for Bambu Lab A1 Mini</span>
+        </header>
+
+        <div class="main-layout">
+            <!-- Left Panel: Controls -->
+            <aside id="controls">
+                <section class="control-group">
+                    <h2>Shape</h2>
+                    <label>
+                        Profile
+                        <select id="profile">
+                            <option value="cylinder">Cylinder</option>
+                            <option value="cone">Cone</option>
+                            <option value="bulge">Bulge</option>
+                            <option value="hourglass">Hourglass</option>
+                            <option value="trumpet">Trumpet</option>
+                            <option value="wave" selected>Wave</option>
+                        </select>
+                    </label>
+                    <label>
+                        Bottom Diameter (mm)
+                        <input type="range" id="bottomDiameter" min="40" max="180" value="100" step="1">
+                        <span class="val" data-for="bottomDiameter">100</span>
+                    </label>
+                    <label>
+                        Top Diameter (mm)
+                        <input type="range" id="topDiameter" min="40" max="200" value="120" step="1">
+                        <span class="val" data-for="topDiameter">120</span>
+                    </label>
+                    <label>
+                        Height (mm)
+                        <input type="range" id="height" min="30" max="180" value="100" step="1">
+                        <span class="val" data-for="height">100</span>
+                    </label>
+                    <label>
+                        Sides
+                        <input type="range" id="sides" min="3" max="128" value="64" step="1">
+                        <span class="val" data-for="sides">64</span>
+                    </label>
+                </section>
+
+                <section class="control-group">
+                    <h2>Wall</h2>
+                    <label>
+                        Wall Thickness (mm)
+                        <input type="range" id="wallThickness" min="0.4" max="2.0" value="0.8" step="0.1">
+                        <span class="val" data-for="wallThickness">0.8</span>
+                    </label>
+                    <label>
+                        Layer Height (mm)
+                        <input type="range" id="layerHeight" min="0.08" max="0.28" value="0.16" step="0.02">
+                        <span class="val" data-for="layerHeight">0.16</span>
+                    </label>
+                </section>
+
+                <section class="control-group">
+                    <h2>Non-Planar Wave</h2>
+                    <label>
+                        Wave Amplitude (mm)
+                        <input type="range" id="waveAmplitude" min="0" max="4.0" value="1.5" step="0.1">
+                        <span class="val" data-for="waveAmplitude">1.5</span>
+                    </label>
+                    <label>
+                        Wave Frequency
+                        <input type="range" id="waveFrequency" min="1" max="20" value="6" step="1">
+                        <span class="val" data-for="waveFrequency">6</span>
+                    </label>
+                    <label>
+                        Vertical Waves
+                        <input type="range" id="verticalWaves" min="0" max="10" value="3" step="1">
+                        <span class="val" data-for="verticalWaves">3</span>
+                    </label>
+                </section>
+
+                <section class="control-group">
+                    <h2>Pattern</h2>
+                    <label>
+                        Pattern Type
+                        <select id="patternType">
+                            <option value="none">None (Solid)</option>
+                            <option value="diamonds" selected>Diamonds</option>
+                            <option value="hexagons">Hexagons</option>
+                            <option value="spirals">Spirals</option>
+                            <option value="waves">Sine Waves</option>
+                            <option value="voronoi">Voronoi</option>
+                        </select>
+                    </label>
+                    <label>
+                        Pattern Scale
+                        <input type="range" id="patternScale" min="2" max="30" value="10" step="1">
+                        <span class="val" data-for="patternScale">10</span>
+                    </label>
+                    <label>
+                        Pattern Depth (% wall)
+                        <input type="range" id="patternDepth" min="0" max="100" value="50" step="5">
+                        <span class="val" data-for="patternDepth">50</span>
+                    </label>
+                </section>
+
+                <section class="control-group">
+                    <h2>Base</h2>
+                    <label>
+                        Base Rings
+                        <input type="range" id="baseRings" min="0" max="10" value="3" step="1">
+                        <span class="val" data-for="baseRings">3</span>
+                    </label>
+                    <label>
+                        Lip Rings (Top)
+                        <input type="range" id="lipRings" min="0" max="10" value="2" step="1">
+                        <span class="val" data-for="lipRings">2</span>
+                    </label>
+                </section>
+
+                <section class="control-group">
+                    <h2>Print Settings</h2>
+                    <label>
+                        Print Speed (mm/s)
+                        <input type="range" id="printSpeed" min="10" max="150" value="40" step="5">
+                        <span class="val" data-for="printSpeed">40</span>
+                    </label>
+                    <label>
+                        Nozzle Temp (&deg;C)
+                        <input type="range" id="nozzleTemp" min="180" max="260" value="215" step="5">
+                        <span class="val" data-for="nozzleTemp">215</span>
+                    </label>
+                    <label>
+                        Bed Temp (&deg;C)
+                        <input type="range" id="bedTemp" min="40" max="100" value="60" step="5">
+                        <span class="val" data-for="bedTemp">60</span>
+                    </label>
+                    <label>
+                        Filament Diameter (mm)
+                        <input type="range" id="filamentDiameter" min="1.70" max="1.80" value="1.75" step="0.01">
+                        <span class="val" data-for="filamentDiameter">1.75</span>
+                    </label>
+                    <label>
+                        Nozzle Diameter (mm)
+                        <select id="nozzleDiameter">
+                            <option value="0.2">0.2</option>
+                            <option value="0.4" selected>0.4</option>
+                            <option value="0.6">0.6</option>
+                        </select>
+                    </label>
+                    <label>
+                        Retraction Distance (mm)
+                        <input type="range" id="retractionDist" min="0" max="3" value="0.8" step="0.1">
+                        <span class="val" data-for="retractionDist">0.8</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="spiralMode"> Spiral (Vase) Mode
+                    </label>
+                </section>
+
+                <div class="actions">
+                    <button id="btnGenerate" class="btn primary">Generate G-code</button>
+                    <button id="btnDownload" class="btn" disabled>Download .gcode</button>
+                </div>
+
+                <div id="stats" class="stats" style="display:none">
+                    <div>Layers: <span id="statLayers">-</span></div>
+                    <div>Est. Time: <span id="statTime">-</span></div>
+                    <div>Est. Filament: <span id="statFilament">-</span></div>
+                    <div>Lines of G-code: <span id="statLines">-</span></div>
+                </div>
+            </aside>
+
+            <!-- Center: 3D Preview -->
+            <main id="viewport-container">
+                <canvas id="viewport"></canvas>
+                <div id="viewport-hint">Drag to rotate &middot; Scroll to zoom</div>
+                <div id="view-toggles">
+                    <button class="view-btn active" data-view="shape">Shape</button>
+                    <button class="view-btn" data-view="gcode">G-code</button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Three.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+/**
+ * Lampshade Geometry Generator
+ */
+const LampshadeGeometry = (() => {
+    const profiles = {
+        cylinder(t, bottomR, topR) {
+            return bottomR + (topR - bottomR) * t;
+        },
+        cone(t, bottomR, topR) {
+            return bottomR + (topR - bottomR) * t;
+        },
+        bulge(t, bottomR, topR) {
+            const base = bottomR + (topR - bottomR) * t;
+            const bulge = Math.sin(t * Math.PI) * 0.3 * (bottomR + topR) / 2;
+            return base + bulge;
+        },
+        hourglass(t, bottomR, topR) {
+            const base = bottomR + (topR - bottomR) * t;
+            const pinch = -Math.sin(t * Math.PI) * 0.25 * (bottomR + topR) / 2;
+            return Math.max(base + pinch, 5);
+        },
+        trumpet(t, bottomR, topR) {
+            const curved = t * t;
+            return bottomR + (topR - bottomR) * curved;
+        },
+        wave(t, bottomR, topR) {
+            const base = bottomR + (topR - bottomR) * t;
+            const wave = Math.sin(t * Math.PI * 3) * 0.1 * (bottomR + topR) / 2;
+            return base + wave;
+        }
+    };
+
+    function generate(params) {
+        const {
+            profile = 'wave',
+            bottomDiameter = 100,
+            topDiameter = 120,
+            height = 100,
+            sides = 64,
+            layerHeight = 0.16,
+            waveAmplitude = 1.5,
+            waveFrequency = 6,
+            verticalWaves = 3,
+        } = params;
+
+        const bottomR = bottomDiameter / 2;
+        const topR = topDiameter / 2;
+        const profileFn = profiles[profile] || profiles.cylinder;
+        const layerCount = Math.ceil(height / layerHeight);
+        const rings = [];
+
+        for (let layer = 0; layer <= layerCount; layer++) {
+            const t = layer / layerCount;
+            const z = t * height;
+            const baseRadius = profileFn(t, bottomR, topR);
+            const ring = [];
+
+            for (let s = 0; s < sides; s++) {
+                const angle = (s / sides) * Math.PI * 2;
+                let zOffset = 0;
+                if (waveAmplitude > 0) {
+                    zOffset = waveAmplitude * Math.sin(angle * waveFrequency + t * verticalWaves * Math.PI * 2);
+                }
+                let rOffset = 0;
+                if (verticalWaves > 0 && waveAmplitude > 0) {
+                    rOffset = (waveAmplitude * 0.3) * Math.cos(angle * waveFrequency * 0.5 + t * verticalWaves * Math.PI);
+                }
+                const r = baseRadius + rOffset;
+                ring.push({
+                    x: r * Math.cos(angle),
+                    y: r * Math.sin(angle),
+                    z: z + zOffset,
+                    radius: r,
+                    angle: angle,
+                    layer: layer,
+                    t: t
+                });
+            }
+            rings.push(ring);
+        }
+        return { rings, layerCount, totalHeight: height };
+    }
+
+    function buildMesh(rings, params) {
+        const geometry = new THREE.BufferGeometry();
+        const vertices = [];
+        const normals = [];
+        const uvs = [];
+        const indices = [];
+        const sides = rings[0].length;
+        const layers = rings.length;
+
+        for (let l = 0; l < layers; l++) {
+            for (let s = 0; s < sides; s++) {
+                const p = rings[l][s];
+                vertices.push(p.x, p.z, p.y);
+                const len = Math.sqrt(p.x * p.x + p.y * p.y) || 1;
+                normals.push(p.x / len, 0, p.y / len);
+                uvs.push(s / sides, l / (layers - 1));
+            }
+        }
+
+        for (let l = 0; l < layers - 1; l++) {
+            for (let s = 0; s < sides; s++) {
+                const s2 = (s + 1) % sides;
+                const a = l * sides + s;
+                const b = l * sides + s2;
+                const c = (l + 1) * sides + s2;
+                const d = (l + 1) * sides + s;
+                indices.push(a, b, c);
+                indices.push(a, c, d);
+            }
+        }
+
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geometry.setIndex(indices);
+        geometry.computeVertexNormals();
+
+        const material = new THREE.MeshPhysicalMaterial({
+            color: 0xffeedd,
+            transparent: true,
+            opacity: 0.7,
+            roughness: 0.4,
+            metalness: 0.0,
+            transmission: 0.3,
+            thickness: 1.0,
+            side: THREE.DoubleSide,
+            wireframe: false,
+        });
+
+        return new THREE.Mesh(geometry, material);
+    }
+
+    function buildWireframe(rings) {
+        const geometry = new THREE.BufferGeometry();
+        const vertices = [];
+        const sides = rings[0].length;
+        const layers = rings.length;
+
+        const layerStep = Math.max(1, Math.floor(layers / 40));
+        for (let l = 0; l < layers; l += layerStep) {
+            for (let s = 0; s < sides; s++) {
+                const s2 = (s + 1) % sides;
+                const p1 = rings[l][s];
+                const p2 = rings[l][s2];
+                vertices.push(p1.x, p1.z, p1.y);
+                vertices.push(p2.x, p2.z, p2.y);
+            }
+        }
+
+        const segStep = Math.max(1, Math.floor(sides / 16));
+        for (let s = 0; s < sides; s += segStep) {
+            for (let l = 0; l < layers - 1; l++) {
+                const p1 = rings[l][s];
+                const p2 = rings[l + 1][s];
+                vertices.push(p1.x, p1.z, p1.y);
+                vertices.push(p2.x, p2.z, p2.y);
+            }
+        }
+
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        const material = new THREE.LineBasicMaterial({
+            color: 0xe94560,
+            transparent: true,
+            opacity: 0.15,
+        });
+        return new THREE.LineSegments(geometry, material);
+    }
+
+    return { generate, buildMesh, buildWireframe, profiles };
+})();
+
+/**
+ * Pattern System
+ */
+const Patterns = (() => {
+    function none() { return 1.0; }
+
+    function diamonds(u, v, scale, depth) {
+        const su = u * scale;
+        const sv = v * scale;
+        const dx = Math.abs((su % 1) - 0.5) * 2;
+        const dy = Math.abs((sv % 1) - 0.5) * 2;
+        const diamond = dx + dy;
+        if (diamond < 0.7) return 1.0 - depth;
+        return 1.0;
+    }
+
+    function hexagons(u, v, scale, depth) {
+        const su = u * scale;
+        const sv = v * scale * 0.866;
+        const row = Math.floor(sv);
+        const col = su + (row % 2 === 0 ? 0 : 0.5);
+        const cx = (col % 1) - 0.5;
+        const cy = (sv % 1) - 0.5;
+        const dist = Math.sqrt(cx * cx + cy * cy);
+        if (dist < 0.35) return 1.0 - depth;
+        return 1.0;
+    }
+
+    function spirals(u, v, scale, depth) {
+        const spiralCount = Math.max(1, Math.floor(scale / 3));
+        const angle = u * Math.PI * 2 * spiralCount;
+        const phase = v * scale * 0.5;
+        const val = Math.sin(angle + phase);
+        if (val > 0.3) return 1.0;
+        return 1.0 - depth;
+    }
+
+    function waves(u, v, scale, depth) {
+        const waveVal = Math.sin(u * Math.PI * 2 * scale) * 0.5 + 0.5;
+        const stripe = Math.sin(v * Math.PI * 2 * scale * 2) * 0.5 + 0.5;
+        const combined = waveVal * 0.5 + stripe * 0.5;
+        if (combined > 0.55) return 1.0;
+        return 1.0 - depth;
+    }
+
+    function voronoi(u, v, scale, depth) {
+        const su = u * scale;
+        const sv = v * scale;
+        const cellX = Math.floor(su);
+        const cellY = Math.floor(sv);
+        let minDist = 999;
+        let secondDist = 999;
+
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+                const nx = cellX + dx;
+                const ny = cellY + dy;
+                const h = hash2d(nx, ny);
+                const px = nx + h.x;
+                const py = ny + h.y;
+                const d = Math.sqrt((su - px) ** 2 + (sv - py) ** 2);
+                if (d < minDist) { secondDist = minDist; minDist = d; }
+                else if (d < secondDist) { secondDist = d; }
+            }
+        }
+        const edge = secondDist - minDist;
+        if (edge < 0.12) return 1.0;
+        return 1.0 - depth;
+    }
+
+    function hash2d(x, y) {
+        let h = x * 374761393 + y * 668265263;
+        h = (h ^ (h >> 13)) * 1274126177;
+        h = h ^ (h >> 16);
+        return {
+            x: ((h & 0xFFFF) / 0xFFFF) * 0.8 + 0.1,
+            y: (((h >> 16) & 0xFFFF) / 0xFFFF) * 0.8 + 0.1
+        };
+    }
+
+    const patternMap = { none, diamonds, hexagons, spirals, waves, voronoi };
+
+    function sample(type, u, v, scale, depthPct) {
+        const fn = patternMap[type] || none;
+        if (type === 'none') return 1.0;
+        const depth = Math.min(1, Math.max(0, depthPct / 100));
+        return fn(u, v, scale, depth);
+    }
+
+    return { sample, patternMap };
+})();
+
+/**
+ * Non-Planar G-code Generator (A1 Mini)
+ */
+const GcodeGenerator = (() => {
+    function generate(rings, params) {
+        const {
+            height = 100, sides = 64, layerHeight = 0.16, wallThickness = 0.8,
+            nozzleTemp = 215, bedTemp = 60, printSpeed = 40, filamentDiameter = 1.75,
+            nozzleDiameter = 0.4, retractionDist = 0.8, patternType = 'none',
+            patternScale = 10, patternDepth = 50, baseRings = 3, lipRings = 2,
+            spiralMode = false, waveAmplitude = 1.5,
+        } = params;
+
+        const lines = [];
+        const toolpaths = [];
+        let E = 0;
+        let lastX = 0, lastY = 0, lastZ = 0;
+        let totalMoves = 0;
+
+        const filamentArea = Math.PI * (filamentDiameter / 2) ** 2;
+        const extrusionWidth = nozzleDiameter * 1.05;
+        const extrusionMultiplier = (extrusionWidth * layerHeight) / filamentArea;
+
+        function emitLine(text) { lines.push(text); }
+
+        function moveTo(x, y, z, f) {
+            emitLine(`G0 X${x.toFixed(3)} Y${y.toFixed(3)} Z${z.toFixed(3)} F${f}`);
+            lastX = x; lastY = y; lastZ = z;
+        }
+
+        function extrudeTo(x, y, z, f) {
+            const dx = x - lastX, dy = y - lastY, dz = z - lastZ;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            E += dist * extrusionMultiplier;
+            emitLine(`G1 X${x.toFixed(3)} Y${y.toFixed(3)} Z${z.toFixed(3)} E${E.toFixed(5)} F${f}`);
+            lastX = x; lastY = y; lastZ = z;
+            totalMoves++;
+        }
+
+        function retract() {
+            if (retractionDist > 0) { E -= retractionDist; emitLine(`G1 E${E.toFixed(5)} F${(40 * 60)}`); }
+        }
+
+        function unretract() {
+            if (retractionDist > 0) { E += retractionDist; emitLine(`G1 E${E.toFixed(5)} F${(40 * 60)}`); }
+        }
+
+        emitLine('; Generated by Lampshade Generator — Non-Planar G-code');
+        emitLine('; Target: Bambu Lab A1 Mini');
+        emitLine(`; Layer height: ${layerHeight}mm`);
+        emitLine(`; Wall thickness: ${wallThickness}mm`);
+        emitLine(`; Non-planar amplitude: ${waveAmplitude}mm`);
+        emitLine(`; Pattern: ${patternType}`);
+        emitLine('');
+        emitLine('; ====== START GCODE ======');
+        emitLine('G90 ; Absolute positioning');
+        emitLine('M82 ; Absolute extrusion');
+        emitLine(`M104 S${nozzleTemp} ; Set nozzle temp`);
+        emitLine(`M140 S${bedTemp} ; Set bed temp`);
+        emitLine(`M190 S${bedTemp} ; Wait for bed temp`);
+        emitLine(`M109 S${nozzleTemp} ; Wait for nozzle temp`);
+        emitLine('G28 ; Home all axes');
+        emitLine('G29 ; Auto bed leveling');
+        emitLine('G92 E0 ; Reset extruder');
+        emitLine('');
+        emitLine('; Prime line');
+        emitLine('G1 Z2.0 F3000');
+        emitLine('G1 X5 Y5 F3000');
+        emitLine('G1 Z0.3 F1000');
+        emitLine('G1 X60 Y5 E10 F1500');
+        emitLine('G1 X60 Y5.4 E10.2 F1500');
+        emitLine('G1 X5 Y5.4 E20 F1500');
+        emitLine('G92 E0 ; Reset extruder after prime');
+        emitLine('');
+        E = 0;
+
+        const centreX = 90, centreY = 90;
+        const feedRate = printSpeed * 60;
+        const travelRate = 150 * 60;
+        const firstLayerFeed = Math.min(feedRate, 20 * 60);
+        const layerCount = rings.length - 1;
+        const wallPasses = Math.max(1, Math.round(wallThickness / nozzleDiameter));
+
+        for (let layer = 0; layer <= layerCount; layer++) {
+            const ring = rings[layer];
+            const t = layer / layerCount;
+            const isBaseRegion = layer < baseRings * Math.ceil(1 / layerHeight);
+            const isLipRegion = layer > layerCount - lipRings * Math.ceil(1 / layerHeight);
+            const currentFeed = layer < 3 ? firstLayerFeed : feedRate;
+
+            emitLine('');
+            emitLine(`; ====== LAYER ${layer} Z~${(ring[0].z).toFixed(2)} ======`);
+
+            const layerPath = [];
+            const passes = (isBaseRegion || isLipRegion) ? wallPasses + 1 : wallPasses;
+
+            for (let pass = 0; pass < passes; pass++) {
+                const offsetFraction = pass * nozzleDiameter;
+
+                if (spiralMode && pass === 0 && !isBaseRegion && !isLipRegion) {
+                    for (let s = 0; s < sides; s++) {
+                        const pt = ring[s];
+                        const nextZ = (layer < layerCount) ? rings[layer + 1][s].z : pt.z;
+                        const interpZ = pt.z + (nextZ - pt.z) * (s / sides);
+                        const r = pt.radius - offsetFraction;
+                        if (r <= 0) continue;
+                        const x = centreX + r * Math.cos(pt.angle);
+                        const y = centreY + r * Math.sin(pt.angle);
+                        const z = interpZ;
+                        const u = s / sides;
+                        const v = t;
+                        const wallMult = Patterns.sample(patternType, u, v, patternScale, patternDepth);
+
+                        if (wallMult < 0.1 && !isBaseRegion && !isLipRegion) {
+                            retract(); moveTo(x, y, z, travelRate); unretract();
+                        } else {
+                            if (s === 0 && pass === 0) { retract(); moveTo(x, y, z, travelRate); unretract(); }
+                            extrudeTo(x, y, z, currentFeed);
+                        }
+                        layerPath.push({ x, y: z, z: y, extrude: wallMult >= 0.1 });
+                    }
+                } else {
+                    let needsTravel = true;
+                    for (let s = 0; s <= sides; s++) {
+                        const idx = s % sides;
+                        const pt = ring[idx];
+                        const r = pt.radius - offsetFraction;
+                        if (r <= 0) continue;
+                        const x = centreX + r * Math.cos(pt.angle);
+                        const y = centreY + r * Math.sin(pt.angle);
+                        const z = pt.z;
+                        const u = idx / sides;
+                        const v = t;
+                        const wallMult = Patterns.sample(patternType, u, v, patternScale, patternDepth);
+
+                        if (wallMult < 0.1 && !isBaseRegion && !isLipRegion) {
+                            if (!needsTravel) { retract(); needsTravel = true; }
+                            layerPath.push({ x, y: z, z: y, extrude: false });
+                            continue;
+                        }
+                        if (needsTravel) { moveTo(x, y, z, travelRate); unretract(); needsTravel = false; }
+                        extrudeTo(x, y, z, currentFeed);
+                        layerPath.push({ x, y: z, z: y, extrude: true });
+                    }
+                    if (!needsTravel) { retract(); }
+                }
+            }
+            toolpaths.push(layerPath);
+        }
+
+        emitLine('');
+        emitLine('; ====== END GCODE ======');
+        emitLine('G91 ; Relative positioning');
+        emitLine('G1 E-2 F1800 ; Retract');
+        emitLine('G1 Z10 F3000 ; Lift nozzle');
+        emitLine('G90 ; Absolute positioning');
+        emitLine('G1 X5 Y170 F9000 ; Move to back corner');
+        emitLine('M104 S0 ; Turn off nozzle heater');
+        emitLine('M140 S0 ; Turn off bed heater');
+        emitLine('M107 ; Fan off');
+        emitLine('M84 ; Disable motors');
+        emitLine('; Done!');
+
+        const totalFilamentMm = E;
+        const totalFilamentM = E / 1000;
+        const estimatedMinutes = (totalMoves / (printSpeed * 60)) * 60 + layerCount * 0.5;
+
+        return {
+            gcode: lines.join('\n'),
+            stats: {
+                layers: layerCount, lines: lines.length,
+                filamentMm: totalFilamentMm.toFixed(1), filamentM: totalFilamentM.toFixed(2),
+                estimatedMinutes: Math.ceil(estimatedMinutes),
+                estimatedTime: formatTime(estimatedMinutes),
+            },
+            toolpaths,
+        };
+    }
+
+    function formatTime(minutes) {
+        const hrs = Math.floor(minutes / 60);
+        const mins = Math.ceil(minutes % 60);
+        if (hrs > 0) return `${hrs}h ${mins}m`;
+        return `${mins}m`;
+    }
+
+    function validate(params) {
+        const warnings = [];
+        const maxXY = 180, maxZ = 180;
+        const maxR = Math.max(params.bottomDiameter, params.topDiameter) / 2;
+        if (maxR * 2 > maxXY) warnings.push(`Diameter ${maxR * 2}mm exceeds A1 Mini bed width (${maxXY}mm)`);
+        if (params.height > maxZ) warnings.push(`Height ${params.height}mm exceeds A1 Mini build height (${maxZ}mm)`);
+        if (params.waveAmplitude > params.layerHeight * 3)
+            warnings.push(`Wave amplitude ${params.waveAmplitude}mm is >3x layer height — may cause nozzle collisions`);
+        if (params.height + params.waveAmplitude > maxZ)
+            warnings.push(`Total height with waves (${(params.height + params.waveAmplitude).toFixed(1)}mm) exceeds build volume`);
+        return warnings;
+    }
+
+    return { generate, validate };
+})();
+
+/**
+ * G-code Toolpath Preview
+ */
+const GcodePreview = (() => {
+    function build(toolpaths, totalLayers) {
+        const group = new THREE.Group();
+        const colorBottom = new THREE.Color(0x2196f3);
+        const colorTop = new THREE.Color(0xe94560);
+        const maxLayersToShow = Math.min(toolpaths.length, 2000);
+        const step = Math.max(1, Math.floor(toolpaths.length / maxLayersToShow));
+
+        for (let l = 0; l < toolpaths.length; l += step) {
+            const layer = toolpaths[l];
+            if (!layer || layer.length < 2) continue;
+            const t = l / (toolpaths.length - 1 || 1);
+            const color = colorBottom.clone().lerp(colorTop, t);
+            const extrudeVerts = [];
+            const travelVerts = [];
+
+            for (let i = 1; i < layer.length; i++) {
+                const prev = layer[i - 1], curr = layer[i];
+                if (curr.extrude) {
+                    extrudeVerts.push(prev.x, prev.y, prev.z);
+                    extrudeVerts.push(curr.x, curr.y, curr.z);
+                } else {
+                    travelVerts.push(prev.x, prev.y, prev.z);
+                    travelVerts.push(curr.x, curr.y, curr.z);
+                }
+            }
+
+            if (extrudeVerts.length > 0) {
+                const geo = new THREE.BufferGeometry();
+                geo.setAttribute('position', new THREE.Float32BufferAttribute(extrudeVerts, 3));
+                group.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color })));
+            }
+            if (travelVerts.length > 0) {
+                const geo = new THREE.BufferGeometry();
+                geo.setAttribute('position', new THREE.Float32BufferAttribute(travelVerts, 3));
+                group.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.2 })));
+            }
+        }
+        group.position.set(-90, 0, -90);
+        return group;
+    }
+    return { build };
+})();
+
+/**
+ * Main Application
+ */
+(function () {
+    'use strict';
+
+    const canvas = document.getElementById('viewport');
+    const container = document.getElementById('viewport-container');
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x111111);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 2000);
+    camera.position.set(120, 120, 180);
+
+    const controls = new THREE.OrbitControls(camera, canvas);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.target.set(0, 50, 0);
+    controls.update();
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+    const key = new THREE.DirectionalLight(0xffffff, 0.8);
+    key.position.set(100, 200, 150);
+    scene.add(key);
+    const fill = new THREE.DirectionalLight(0x8888ff, 0.3);
+    fill.position.set(-100, 50, -100);
+    scene.add(fill);
+
+    const innerLight = new THREE.PointLight(0xffcc88, 1.5, 300);
+    innerLight.position.set(0, 50, 0);
+    scene.add(innerLight);
+
+    scene.add(new THREE.GridHelper(180, 18, 0x333333, 0x222222));
+
+    const boxGeo = new THREE.BoxGeometry(180, 180, 180);
+    const boxLine = new THREE.LineSegments(
+        new THREE.EdgesGeometry(boxGeo),
+        new THREE.LineBasicMaterial({ color: 0x333344, transparent: true, opacity: 0.3 })
+    );
+    boxLine.position.y = 90;
+    scene.add(boxLine);
+
+    let shapeMesh = null, shapeWireframe = null, gcodePreviewObj = null;
+    let currentView = 'shape';
+    let generatedGcode = null;
+
+    const paramIds = [
+        'profile', 'bottomDiameter', 'topDiameter', 'height', 'sides',
+        'wallThickness', 'layerHeight',
+        'waveAmplitude', 'waveFrequency', 'verticalWaves',
+        'patternType', 'patternScale', 'patternDepth',
+        'baseRings', 'lipRings',
+        'printSpeed', 'nozzleTemp', 'bedTemp', 'filamentDiameter',
+        'nozzleDiameter', 'retractionDist', 'spiralMode'
+    ];
+
+    function getParams() {
+        const p = {};
+        paramIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (el.type === 'checkbox') p[id] = el.checked;
+            else if (el.type === 'range') p[id] = parseFloat(el.value);
+            else if (el.tagName === 'SELECT') {
+                const v = el.value;
+                p[id] = isNaN(v) ? v : parseFloat(v);
+            }
+        });
+        return p;
+    }
+
+    document.querySelectorAll('.val[data-for]').forEach(span => {
+        const input = document.getElementById(span.dataset.for);
+        if (!input) return;
+        input.addEventListener('input', () => { span.textContent = input.value; });
+    });
+
+    let previewTimeout = null;
+    paramIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => { clearTimeout(previewTimeout); previewTimeout = setTimeout(updatePreview, 100); });
+        el.addEventListener('change', () => { clearTimeout(previewTimeout); previewTimeout = setTimeout(updatePreview, 50); });
+    });
+
+    function updatePreview() {
+        const params = getParams();
+        const { rings } = LampshadeGeometry.generate(params);
+
+        if (shapeMesh) { scene.remove(shapeMesh); shapeMesh.geometry.dispose(); }
+        if (shapeWireframe) { scene.remove(shapeWireframe); shapeWireframe.geometry.dispose(); }
+
+        shapeMesh = LampshadeGeometry.buildMesh(rings, params);
+        shapeWireframe = LampshadeGeometry.buildWireframe(rings);
+        scene.add(shapeMesh);
+        scene.add(shapeWireframe);
+
+        innerLight.position.y = params.height / 2;
+        shapeMesh.visible = (currentView === 'shape');
+        shapeWireframe.visible = (currentView === 'shape');
+        if (gcodePreviewObj) gcodePreviewObj.visible = (currentView === 'gcode');
+
+        generatedGcode = null;
+        document.getElementById('btnDownload').disabled = true;
+        document.getElementById('stats').style.display = 'none';
+    }
+
+    document.getElementById('btnGenerate').addEventListener('click', () => {
+        const params = getParams();
+        const warnings = GcodeGenerator.validate(params);
+        if (warnings.length > 0) alert('Warnings:\n' + warnings.join('\n') + '\n\nGeneration will proceed anyway.');
+
+        const btn = document.getElementById('btnGenerate');
+        btn.textContent = 'Generating...';
+        btn.disabled = true;
+
+        setTimeout(() => {
+            try {
+                const { rings } = LampshadeGeometry.generate(params);
+                const result = GcodeGenerator.generate(rings, params);
+                generatedGcode = result.gcode;
+
+                document.getElementById('statLayers').textContent = result.stats.layers;
+                document.getElementById('statTime').textContent = result.stats.estimatedTime;
+                document.getElementById('statFilament').textContent = result.stats.filamentM + ' m';
+                document.getElementById('statLines').textContent = result.stats.lines.toLocaleString();
+                document.getElementById('stats').style.display = 'grid';
+
+                if (gcodePreviewObj) {
+                    scene.remove(gcodePreviewObj);
+                    gcodePreviewObj.traverse(child => {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) child.material.dispose();
+                    });
+                }
+                gcodePreviewObj = GcodePreview.build(result.toolpaths, result.stats.layers);
+                scene.add(gcodePreviewObj);
+                gcodePreviewObj.visible = (currentView === 'gcode');
+
+                document.getElementById('btnDownload').disabled = false;
+                btn.textContent = 'Generate G-code';
+                btn.disabled = false;
+            } catch (err) {
+                console.error('G-code generation failed:', err);
+                alert('Error generating G-code: ' + err.message);
+                btn.textContent = 'Generate G-code';
+                btn.disabled = false;
+            }
+        }, 50);
+    });
+
+    document.getElementById('btnDownload').addEventListener('click', () => {
+        if (!generatedGcode) return;
+        const blob = new Blob([generatedGcode], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'lampshade.gcode';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentView = btn.dataset.view;
+            if (shapeMesh) shapeMesh.visible = (currentView === 'shape');
+            if (shapeWireframe) shapeWireframe.visible = (currentView === 'shape');
+            if (gcodePreviewObj) gcodePreviewObj.visible = (currentView === 'gcode');
+        });
+    });
+
+    function onResize() {
+        const w = container.clientWidth, h = container.clientHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+    }
+
+    window.addEventListener('resize', onResize);
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    onResize();
+    updatePreview();
+    animate();
+})();
+</script>
+</body>
+</html>
