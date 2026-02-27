@@ -62,8 +62,16 @@
     let shapeMesh = null;
     let shapeWireframe = null;
     let gcodePreviewObj = null;
+    let realisticObj = null;     // Realistic preview group
+    let realisticDispose = null; // Cleanup function for realistic objects
     let currentView = 'shape';
     let generatedGcode = null;
+
+    // Scene lights we'll dim/adjust for realistic mode
+    let sceneAmbient = ambient;
+    let sceneKey = key;
+    let sceneFill = fill;
+    let savedLighting = null; // to restore when leaving realistic mode
 
     // ===== UI Bindings =====
     const paramIds = [
@@ -74,6 +82,12 @@
         'baseRings', 'lipRings',
         'printSpeed', 'nozzleTemp', 'bedTemp', 'filamentDiameter',
         'nozzleDiameter', 'retractionDist', 'spiralMode'
+    ];
+
+    // Realistic preview param IDs
+    const realisticParamIds = [
+        'materialType', 'filamentColor', 'roomBrightness',
+        'bulbIntensity', 'bulbColorTemp', 'bulbHeight'
     ];
 
     function getParams() {
@@ -118,6 +132,25 @@
         });
     });
 
+    // Realistic param listeners — only rebuild realistic preview
+    let realisticTimeout = null;
+    realisticParamIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => {
+            clearTimeout(realisticTimeout);
+            realisticTimeout = setTimeout(() => {
+                if (currentView === 'realistic') updateRealisticPreview();
+            }, 120);
+        });
+        el.addEventListener('change', () => {
+            clearTimeout(realisticTimeout);
+            realisticTimeout = setTimeout(() => {
+                if (currentView === 'realistic') updateRealisticPreview();
+            }, 60);
+        });
+    });
+
     // ===== Preview Update =====
     function updatePreview() {
         const params = getParams();
@@ -141,10 +174,77 @@
         shapeWireframe.visible = (currentView === 'shape');
         if (gcodePreviewObj) gcodePreviewObj.visible = (currentView === 'gcode');
 
+        // If realistic is active, rebuild it too
+        if (currentView === 'realistic') {
+            updateRealisticPreview();
+        } else if (realisticObj) {
+            realisticObj.visible = false;
+        }
+
         // Invalidate gcode
         generatedGcode = null;
         document.getElementById('btnDownload').disabled = true;
         document.getElementById('stats').style.display = 'none';
+    }
+
+    // ===== Realistic Preview =====
+    function getRealisticParams() {
+        return {
+            materialType: document.getElementById('materialType').value,
+            filamentColor: document.getElementById('filamentColor').value,
+            roomBrightness: parseFloat(document.getElementById('roomBrightness').value),
+            bulbIntensity: parseFloat(document.getElementById('bulbIntensity').value),
+            bulbColorTemp: parseFloat(document.getElementById('bulbColorTemp').value),
+            bulbHeight: parseFloat(document.getElementById('bulbHeight').value),
+        };
+    }
+
+    function updateRealisticPreview() {
+        // Tear down old realistic objects
+        if (realisticObj) {
+            scene.remove(realisticObj);
+            if (realisticDispose) realisticDispose();
+            realisticObj = null;
+            realisticDispose = null;
+        }
+
+        const params = getParams();
+        const realParams = getRealisticParams();
+        const { rings } = LampshadeGeometry.generate(params);
+
+        const result = RealisticPreview.build(rings, params, realParams);
+        realisticObj = result.group;
+        realisticDispose = result.dispose;
+        scene.add(realisticObj);
+
+        // Adjust scene lighting for realistic mode
+        applyRealisticLighting(realParams);
+
+        realisticObj.visible = true;
+    }
+
+    function applyRealisticLighting(realParams) {
+        const roomFactor = realParams.roomBrightness / 100;
+        // Dim scene lights to simulate a dark room
+        sceneAmbient.intensity = 0.05 + roomFactor * 0.4;
+        sceneKey.intensity = roomFactor * 0.5;
+        sceneFill.intensity = roomFactor * 0.2;
+        innerLight.visible = false; // realistic mode uses its own light
+        renderer.setClearColor(lerpColor(0x050508, 0x222233, roomFactor));
+    }
+
+    function restoreDefaultLighting() {
+        sceneAmbient.intensity = 0.4;
+        sceneKey.intensity = 0.8;
+        sceneFill.intensity = 0.3;
+        innerLight.visible = true;
+        renderer.setClearColor(0x111111);
+    }
+
+    function lerpColor(c1, c2, t) {
+        const a = new THREE.Color(c1);
+        const b = new THREE.Color(c2);
+        return a.lerp(b, t);
     }
 
     // ===== G-code Generation =====
@@ -219,13 +319,30 @@
     // ===== View Toggles =====
     document.querySelectorAll('.view-btn').forEach(btn => {
         btn.addEventListener('click', () => {
+            const prevView = currentView;
             document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentView = btn.dataset.view;
 
+            // Shape visibility
             if (shapeMesh) shapeMesh.visible = (currentView === 'shape');
             if (shapeWireframe) shapeWireframe.visible = (currentView === 'shape');
+            // G-code visibility
             if (gcodePreviewObj) gcodePreviewObj.visible = (currentView === 'gcode');
+            // Build volume box
+            boxLine.visible = (currentView !== 'realistic');
+            gridHelper.visible = (currentView !== 'realistic');
+
+            // Realistic mode
+            if (currentView === 'realistic') {
+                updateRealisticPreview();
+            } else {
+                if (realisticObj) realisticObj.visible = false;
+                // Restore default lighting when leaving realistic mode
+                if (prevView === 'realistic') {
+                    restoreDefaultLighting();
+                }
+            }
         });
     });
 

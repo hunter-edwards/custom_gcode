@@ -109,6 +109,43 @@
                     </label>
                 </section>
 
+                <section class="control-group" id="realisticControls">
+                    <h2>Realistic Preview</h2>
+                    <label>
+                        Material
+                        <select id="materialType">
+                            <option value="pla" selected>PLA</option>
+                            <option value="petg">PETG</option>
+                            <option value="silkPla">Silk PLA</option>
+                            <option value="tpu">TPU</option>
+                        </select>
+                    </label>
+                    <label>
+                        Filament Color
+                        <input type="color" id="filamentColor" value="#f5e6d0">
+                    </label>
+                    <label>
+                        Room Brightness
+                        <input type="range" id="roomBrightness" min="0" max="100" value="20" step="5">
+                        <span class="val" data-for="roomBrightness">20</span>
+                    </label>
+                    <label>
+                        Bulb Intensity
+                        <input type="range" id="bulbIntensity" min="0" max="100" value="80" step="5">
+                        <span class="val" data-for="bulbIntensity">80</span>
+                    </label>
+                    <label>
+                        Bulb Color Temp (K)
+                        <input type="range" id="bulbColorTemp" min="2000" max="6500" value="2700" step="100">
+                        <span class="val" data-for="bulbColorTemp">2700</span>
+                    </label>
+                    <label>
+                        Bulb Height (%)
+                        <input type="range" id="bulbHeight" min="10" max="90" value="40" step="5">
+                        <span class="val" data-for="bulbHeight">40</span>
+                    </label>
+                </section>
+
                 <section class="control-group">
                     <h2>Base</h2>
                     <label>
@@ -182,6 +219,7 @@
                 <div id="viewport-hint">Drag to rotate &middot; Scroll to zoom</div>
                 <div id="view-toggles">
                     <button class="view-btn active" data-view="shape">Shape</button>
+                    <button class="view-btn" data-view="realistic">Realistic</button>
                     <button class="view-btn" data-view="gcode">G-code</button>
                 </div>
             </main>
@@ -196,6 +234,7 @@
     <script src="patterns.js"></script>
     <script src="gcode-generator.js"></script>
     <script src="gcode-preview.js"></script>
+    <script src="realistic-preview.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
