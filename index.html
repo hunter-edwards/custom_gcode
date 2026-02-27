@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lampshade Generator — Non-Planar 3D Print</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Lampshade Generator</h1>
+            <span class="subtitle">Non-Planar G-code for Bambu Lab A1 Mini</span>
+        </header>
+
+        <div class="main-layout">
+            <!-- Left Panel: Controls -->
+            <aside id="controls">
+                <section class="control-group">
+                    <h2>Shape</h2>
+                    <label>
+                        Profile
+                        <select id="profile">
+                            <option value="cylinder">Cylinder</option>
+                            <option value="cone">Cone</option>
+                            <option value="bulge">Bulge</option>
+                            <option value="hourglass">Hourglass</option>
+                            <option value="trumpet">Trumpet</option>
+                            <option value="wave" selected>Wave</option>
+                        </select>
+                    </label>
+                    <label>
+                        Bottom Diameter (mm)
+                        <input type="range" id="bottomDiameter" min="40" max="180" value="100" step="1">
+                        <span class="val" data-for="bottomDiameter">100</span>
+                    </label>
+                    <label>
+                        Top Diameter (mm)
+                        <input type="range" id="topDiameter" min="40" max="200" value="120" step="1">
+                        <span class="val" data-for="topDiameter">120</span>
+                    </label>
+                    <label>
+                        Height (mm)
+                        <input type="range" id="height" min="30" max="180" value="100" step="1">
+                        <span class="val" data-for="height">100</span>
+                    </label>
+                    <label>
+                        Sides
+                        <input type="range" id="sides" min="3" max="128" value="64" step="1">
+                        <span class="val" data-for="sides">64</span>
+                    </label>
+                </section>
+
+                <section class="control-group">
+                    <h2>Wall</h2>
+                    <label>
+                        Wall Thickness (mm)
+                        <input type="range" id="wallThickness" min="0.4" max="2.0" value="0.8" step="0.1">
+                        <span class="val" data-for="wallThickness">0.8</span>
+                    </label>
+                    <label>
+                        Layer Height (mm)
+                        <input type="range" id="layerHeight" min="0.08" max="0.28" value="0.16" step="0.02">
+                        <span class="val" data-for="layerHeight">0.16</span>
+                    </label>
+                </section>
+
+                <section class="control-group">
+                    <h2>Non-Planar Wave</h2>
+                    <label>
+                        Wave Amplitude (mm)
+                        <input type="range" id="waveAmplitude" min="0" max="4.0" value="1.5" step="0.1">
+                        <span class="val" data-for="waveAmplitude">1.5</span>
+                    </label>
+                    <label>
+                        Wave Frequency
+                        <input type="range" id="waveFrequency" min="1" max="20" value="6" step="1">
+                        <span class="val" data-for="waveFrequency">6</span>
+                    </label>
+                    <label>
+                        Vertical Waves
+                        <input type="range" id="verticalWaves" min="0" max="10" value="3" step="1">
+                        <span class="val" data-for="verticalWaves">3</span>
+                    </label>
+                </section>
+
+                <section class="control-group">
+                    <h2>Pattern</h2>
+                    <label>
+                        Pattern Type
+                        <select id="patternType">
+                            <option value="none">None (Solid)</option>
+                            <option value="diamonds" selected>Diamonds</option>
+                            <option value="hexagons">Hexagons</option>
+                            <option value="spirals">Spirals</option>
+                            <option value="waves">Sine Waves</option>
+                            <option value="voronoi">Voronoi</option>
+                        </select>
+                    </label>
+                    <label>
+                        Pattern Scale
+                        <input type="range" id="patternScale" min="2" max="30" value="10" step="1">
+                        <span class="val" data-for="patternScale">10</span>
+                    </label>
+                    <label>
+                        Pattern Depth (% wall)
+                        <input type="range" id="patternDepth" min="0" max="100" value="50" step="5">
+                        <span class="val" data-for="patternDepth">50</span>
+                    </label>
+                </section>
+
+                <section class="control-group">
+                    <h2>Base</h2>
+                    <label>
+                        Base Rings
+                        <input type="range" id="baseRings" min="0" max="10" value="3" step="1">
+                        <span class="val" data-for="baseRings">3</span>
+                    </label>
+                    <label>
+                        Lip Rings (Top)
+                        <input type="range" id="lipRings" min="0" max="10" value="2" step="1">
+                        <span class="val" data-for="lipRings">2</span>
+                    </label>
+                </section>
+
+                <section class="control-group">
+                    <h2>Print Settings</h2>
+                    <label>
+                        Print Speed (mm/s)
+                        <input type="range" id="printSpeed" min="10" max="150" value="40" step="5">
+                        <span class="val" data-for="printSpeed">40</span>
+                    </label>
+                    <label>
+                        Nozzle Temp (&deg;C)
+                        <input type="range" id="nozzleTemp" min="180" max="260" value="215" step="5">
+                        <span class="val" data-for="nozzleTemp">215</span>
+                    </label>
+                    <label>
+                        Bed Temp (&deg;C)
+                        <input type="range" id="bedTemp" min="40" max="100" value="60" step="5">
+                        <span class="val" data-for="bedTemp">60</span>
+                    </label>
+                    <label>
+                        Filament Diameter (mm)
+                        <input type="range" id="filamentDiameter" min="1.70" max="1.80" value="1.75" step="0.01">
+                        <span class="val" data-for="filamentDiameter">1.75</span>
+                    </label>
+                    <label>
+                        Nozzle Diameter (mm)
+                        <select id="nozzleDiameter">
+                            <option value="0.2">0.2</option>
+                            <option value="0.4" selected>0.4</option>
+                            <option value="0.6">0.6</option>
+                        </select>
+                    </label>
+                    <label>
+                        Retraction Distance (mm)
+                        <input type="range" id="retractionDist" min="0" max="3" value="0.8" step="0.1">
+                        <span class="val" data-for="retractionDist">0.8</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="spiralMode"> Spiral (Vase) Mode
+                    </label>
+                </section>
+
+                <div class="actions">
+                    <button id="btnGenerate" class="btn primary">Generate G-code</button>
+                    <button id="btnDownload" class="btn" disabled>Download .gcode</button>
+                </div>
+
+                <div id="stats" class="stats" style="display:none">
+                    <div>Layers: <span id="statLayers">-</span></div>
+                    <div>Est. Time: <span id="statTime">-</span></div>
+                    <div>Est. Filament: <span id="statFilament">-</span></div>
+                    <div>Lines of G-code: <span id="statLines">-</span></div>
+                </div>
+            </aside>
+
+            <!-- Center: 3D Preview -->
+            <main id="viewport-container">
+                <canvas id="viewport"></canvas>
+                <div id="viewport-hint">Drag to rotate &middot; Scroll to zoom</div>
+                <div id="view-toggles">
+                    <button class="view-btn active" data-view="shape">Shape</button>
+                    <button class="view-btn" data-view="gcode">G-code</button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Three.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script src="lampshade-geometry.js"></script>
+    <script src="patterns.js"></script>
+    <script src="gcode-generator.js"></script>
+    <script src="gcode-preview.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
