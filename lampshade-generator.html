@@ -280,6 +280,16 @@ input[type="checkbox"] {
                         </select>
                     </label>
                     <label>
+                        Silhouette Waves
+                        <input type="range" id="profileWaves" min="0.5" max="5" value="2.5" step="0.5">
+                        <span class="val" data-for="profileWaves">2.5</span>
+                    </label>
+                    <label>
+                        Wave Depth (%)
+                        <input type="range" id="profileWaveDepth" min="0" max="40" value="14" step="1">
+                        <span class="val" data-for="profileWaveDepth">14</span>
+                    </label>
+                    <label>
                         Bottom Diameter (mm)
                         <input type="range" id="bottomDiameter" min="40" max="180" value="100" step="1">
                         <span class="val" data-for="bottomDiameter">100</span>
@@ -299,6 +309,7 @@ input[type="checkbox"] {
                         <input type="range" id="sides" min="3" max="128" value="96" step="1">
                         <span class="val" data-for="sides">96</span>
                     </label>
+                    <canvas id="profilePreview" width="200" height="150" style="width:100%;border-radius:4px;margin-top:6px;display:block;background:#080f1e;"></canvas>
                 </section>
 
                 <section class="control-group">
@@ -316,7 +327,7 @@ input[type="checkbox"] {
                 </section>
 
                 <section class="control-group">
-                    <h2>Non-Planar Wave</h2>
+                    <h2>Surface Waves</h2>
                     <label>
                         Wave Amplitude (mm)
                         <input type="range" id="waveAmplitude" min="0" max="4.0" value="1.5" step="0.1">
@@ -335,7 +346,8 @@ input[type="checkbox"] {
                 </section>
 
                 <section class="control-group">
-                    <h2>Pattern</h2>
+                    <h2>Cutout / Lattice</h2>
+                    <p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:8px;line-height:1.4;">Creates actual holes through the wall. For solid wooj-style, keep None.</p>
                     <label>
                         Pattern Type
                         <select id="patternType">
@@ -490,34 +502,41 @@ input[type="checkbox"] {
 const LampshadeGeometry = (() => {
     const profiles = {
         // Wooj-inspired organic profiles
-        woojWavy(t, bottomR, topR) {
-            // Flagship undulating form inspired by comb jellyfish
+        // All accept optional params for profileWaves and profileWaveDepth
+        woojWavy(t, bottomR, topR, p) {
+            const waves = (p && p.profileWaves) || 2.5;
+            const depth = ((p && p.profileWaveDepth) || 14) / 100;
             const avgR = (bottomR + topR) / 2;
             const taper = 0.85 + 0.15 * Math.sin(t * Math.PI);
-            const wave1 = Math.sin(t * Math.PI * 2.5) * 0.14;
-            const wave2 = Math.sin(t * Math.PI * 5.5) * 0.05;
+            const wave1 = Math.sin(t * Math.PI * waves) * depth;
+            const wave2 = Math.sin(t * Math.PI * waves * 2.2) * (depth * 0.35);
             return avgR * (taper + wave1 + wave2);
         },
-        woojAllium(t, bottomR, topR) {
-            // Globe/bulb shape — narrow base & top, wide middle
+        woojAllium(t, bottomR, topR, p) {
+            const waves = (p && p.profileWaves) || 2.5;
+            const depth = ((p && p.profileWaveDepth) || 14) / 100;
             const maxR = Math.max(bottomR, topR);
             const sphere = Math.sin(t * Math.PI);
             const baseR = maxR * 0.22;
-            return baseR + (maxR - baseR) * sphere;
+            const ripple = Math.sin(t * Math.PI * waves) * depth;
+            return (baseR + (maxR - baseR) * sphere) * (1 + ripple * 0.5);
         },
-        woojTulip(t, bottomR, topR) {
-            // Narrow at bottom, graceful flare opening at top
+        woojTulip(t, bottomR, topR, p) {
+            const waves = (p && p.profileWaves) || 2.5;
+            const depth = ((p && p.profileWaveDepth) || 14) / 100;
             const narrow = Math.min(bottomR, topR) * 0.45;
             const wide = Math.max(bottomR, topR) * 1.1;
             const curve = t * t * (3 - 2 * t);
-            return narrow + (wide - narrow) * curve + Math.sin(t * Math.PI * 2) * 0.06 * topR;
+            const ripple = Math.sin(t * Math.PI * waves) * depth;
+            return (narrow + (wide - narrow) * curve) * (1 + ripple);
         },
-        woojCoral(t, bottomR, topR) {
-            // Organic irregular form with multiple harmonics
+        woojCoral(t, bottomR, topR, p) {
+            const waves = (p && p.profileWaves) || 2.5;
+            const depth = ((p && p.profileWaveDepth) || 14) / 100;
             const base = bottomR + (topR - bottomR) * t;
-            const bump1 = Math.sin(t * Math.PI * 4) * 0.12;
-            const bump2 = Math.sin(t * Math.PI * 7 + 1.5) * 0.06;
-            const bump3 = Math.sin(t * Math.PI * 11 + 0.7) * 0.03;
+            const bump1 = Math.sin(t * Math.PI * waves) * depth;
+            const bump2 = Math.sin(t * Math.PI * waves * 1.8 + 1.5) * (depth * 0.5);
+            const bump3 = Math.sin(t * Math.PI * waves * 2.7 + 0.7) * (depth * 0.25);
             return base * (1 + bump1 + bump2 + bump3);
         },
         // Classic geometric profiles
@@ -541,14 +560,14 @@ const LampshadeGeometry = (() => {
     function generate(params) {
         const { profile = 'woojWavy', bottomDiameter = 100, topDiameter = 120, height = 120,
                 sides = 96, layerHeight = 0.20, waveAmplitude = 1.5, waveFrequency = 6,
-                verticalWaves = 3 } = params;
+                verticalWaves = 3, profileWaves = 2.5, profileWaveDepth = 14 } = params;
         const bottomR = bottomDiameter / 2, topR = topDiameter / 2;
         const profileFn = profiles[profile] || profiles.cylinder;
         const layerCount = Math.ceil(height / layerHeight);
         const rings = [];
         for (let layer = 0; layer <= layerCount; layer++) {
             const t = layer / layerCount, z = t * height;
-            const baseRadius = profileFn(t, bottomR, topR);
+            const baseRadius = profileFn(t, bottomR, topR, params);
             const ring = [];
             for (let s = 0; s < sides; s++) {
                 const angle = (s / sides) * Math.PI * 2;
@@ -1045,7 +1064,7 @@ const RealisticPreview = (() => {
     let currentView = 'shape', generatedGcode = null;
 
     const paramIds = [
-        'profile','bottomDiameter','topDiameter','height','sides',
+        'profile','profileWaves','profileWaveDepth','bottomDiameter','topDiameter','height','sides',
         'wallThickness','layerHeight','waveAmplitude','waveFrequency','verticalWaves',
         'patternType','patternScale','patternDepth','baseRings','lipRings',
         'printSpeed','nozzleTemp','bedTemp','filamentDiameter','nozzleDiameter','retractionDist','spiralMode'
@@ -1097,8 +1116,82 @@ const RealisticPreview = (() => {
         el.addEventListener('change', () => { clearTimeout(realisticTimeout); realisticTimeout = setTimeout(() => { if (currentView === 'realistic') updateRealisticPreview(); }, 60); });
     });
 
+    function renderProfilePreview() {
+        const canvas = document.getElementById('profilePreview');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+        const params = getParams();
+        const profileFn = LampshadeGeometry.profiles[params.profile] || LampshadeGeometry.profiles.cylinder;
+        const bottomR = params.bottomDiameter / 2, topR = params.topDiameter / 2;
+        // Sample profile
+        const N = 120, pts = [];
+        let maxR = 0;
+        for (let i = 0; i <= N; i++) {
+            const t = i / N;
+            const r = profileFn(t, bottomR, topR, params);
+            maxR = Math.max(maxR, r);
+            pts.push({ t, r });
+        }
+        const pad = 12, cx = W / 2;
+        const scaleR = (W / 2 - pad) / Math.max(maxR, 1);
+        const scaleH = H - 2 * pad;
+        // Draw lamp silhouette fill
+        ctx.beginPath();
+        for (let i = 0; i <= N; i++) {
+            const x = cx + pts[i].r * scaleR;
+            const y = H - pad - pts[i].t * scaleH;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        for (let i = N; i >= 0; i--) {
+            ctx.lineTo(cx - pts[i].r * scaleR, H - pad - pts[i].t * scaleH);
+        }
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(245, 230, 208, 0.10)';
+        ctx.fill();
+        // Draw profile outline (right side)
+        ctx.beginPath();
+        for (let i = 0; i <= N; i++) {
+            const x = cx + pts[i].r * scaleR;
+            const y = H - pad - pts[i].t * scaleH;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = '#e94560';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // Draw left side (mirror)
+        ctx.beginPath();
+        for (let i = 0; i <= N; i++) {
+            const x = cx - pts[i].r * scaleR;
+            const y = H - pad - pts[i].t * scaleH;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        // Draw horizontal layer line hints
+        ctx.strokeStyle = 'rgba(204, 187, 170, 0.15)';
+        ctx.lineWidth = 0.5;
+        const lineCount = Math.min(30, Math.floor(params.height / params.layerHeight / 20));
+        for (let i = 1; i < lineCount; i++) {
+            const t = i / lineCount;
+            const r = profileFn(t, bottomR, topR, params);
+            const y = H - pad - t * scaleH;
+            ctx.beginPath();
+            ctx.moveTo(cx - r * scaleR, y);
+            ctx.lineTo(cx + r * scaleR, y);
+            ctx.stroke();
+        }
+        // Centerline
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 4]);
+        ctx.beginPath(); ctx.moveTo(cx, pad); ctx.lineTo(cx, H - pad); ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
     function updatePreview() {
         const params = getParams();
+        renderProfilePreview();
         const { rings } = LampshadeGeometry.generate(params);
         if (shapeMesh) { scene.remove(shapeMesh); shapeMesh.geometry.dispose(); }
         if (shapeWireframe) { scene.remove(shapeWireframe); shapeWireframe.geometry.dispose(); }
