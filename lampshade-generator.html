@@ -267,12 +267,16 @@ input[type="checkbox"] {
                     <label>
                         Profile
                         <select id="profile">
+                            <option value="woojWavy" selected>Wooj Wavy</option>
+                            <option value="woojAllium">Wooj Allium</option>
+                            <option value="woojTulip">Wooj Tulip</option>
+                            <option value="woojCoral">Wooj Coral</option>
                             <option value="cylinder">Cylinder</option>
                             <option value="cone">Cone</option>
                             <option value="bulge">Bulge</option>
                             <option value="hourglass">Hourglass</option>
                             <option value="trumpet">Trumpet</option>
-                            <option value="wave" selected>Wave</option>
+                            <option value="wave">Wave</option>
                         </select>
                     </label>
                     <label>
@@ -287,13 +291,13 @@ input[type="checkbox"] {
                     </label>
                     <label>
                         Height (mm)
-                        <input type="range" id="height" min="30" max="180" value="100" step="1">
-                        <span class="val" data-for="height">100</span>
+                        <input type="range" id="height" min="30" max="180" value="120" step="1">
+                        <span class="val" data-for="height">120</span>
                     </label>
                     <label>
                         Sides
-                        <input type="range" id="sides" min="3" max="128" value="64" step="1">
-                        <span class="val" data-for="sides">64</span>
+                        <input type="range" id="sides" min="3" max="128" value="96" step="1">
+                        <span class="val" data-for="sides">96</span>
                     </label>
                 </section>
 
@@ -306,8 +310,8 @@ input[type="checkbox"] {
                     </label>
                     <label>
                         Layer Height (mm)
-                        <input type="range" id="layerHeight" min="0.08" max="0.28" value="0.16" step="0.02">
-                        <span class="val" data-for="layerHeight">0.16</span>
+                        <input type="range" id="layerHeight" min="0.08" max="0.28" value="0.20" step="0.02">
+                        <span class="val" data-for="layerHeight">0.20</span>
                     </label>
                 </section>
 
@@ -335,8 +339,8 @@ input[type="checkbox"] {
                     <label>
                         Pattern Type
                         <select id="patternType">
-                            <option value="none">None (Solid)</option>
-                            <option value="diamonds" selected>Diamonds</option>
+                            <option value="none" selected>None (Solid)</option>
+                            <option value="diamonds">Diamonds</option>
                             <option value="hexagons">Hexagons</option>
                             <option value="spirals">Spirals</option>
                             <option value="waves">Sine Waves</option>
@@ -389,6 +393,11 @@ input[type="checkbox"] {
                         Bulb Height (%)
                         <input type="range" id="bulbHeight" min="10" max="90" value="40" step="5">
                         <span class="val" data-for="bulbHeight">40</span>
+                    </label>
+                    <label>
+                        Layer Line Visibility
+                        <input type="range" id="layerLineVis" min="0" max="100" value="75" step="5">
+                        <span class="val" data-for="layerLineVis">75</span>
                     </label>
                 </section>
 
@@ -480,6 +489,38 @@ input[type="checkbox"] {
 // ============================================================
 const LampshadeGeometry = (() => {
     const profiles = {
+        // Wooj-inspired organic profiles
+        woojWavy(t, bottomR, topR) {
+            // Flagship undulating form inspired by comb jellyfish
+            const avgR = (bottomR + topR) / 2;
+            const taper = 0.85 + 0.15 * Math.sin(t * Math.PI);
+            const wave1 = Math.sin(t * Math.PI * 2.5) * 0.14;
+            const wave2 = Math.sin(t * Math.PI * 5.5) * 0.05;
+            return avgR * (taper + wave1 + wave2);
+        },
+        woojAllium(t, bottomR, topR) {
+            // Globe/bulb shape — narrow base & top, wide middle
+            const maxR = Math.max(bottomR, topR);
+            const sphere = Math.sin(t * Math.PI);
+            const baseR = maxR * 0.22;
+            return baseR + (maxR - baseR) * sphere;
+        },
+        woojTulip(t, bottomR, topR) {
+            // Narrow at bottom, graceful flare opening at top
+            const narrow = Math.min(bottomR, topR) * 0.45;
+            const wide = Math.max(bottomR, topR) * 1.1;
+            const curve = t * t * (3 - 2 * t);
+            return narrow + (wide - narrow) * curve + Math.sin(t * Math.PI * 2) * 0.06 * topR;
+        },
+        woojCoral(t, bottomR, topR) {
+            // Organic irregular form with multiple harmonics
+            const base = bottomR + (topR - bottomR) * t;
+            const bump1 = Math.sin(t * Math.PI * 4) * 0.12;
+            const bump2 = Math.sin(t * Math.PI * 7 + 1.5) * 0.06;
+            const bump3 = Math.sin(t * Math.PI * 11 + 0.7) * 0.03;
+            return base * (1 + bump1 + bump2 + bump3);
+        },
+        // Classic geometric profiles
         cylinder(t, bottomR, topR) { return bottomR + (topR - bottomR) * t; },
         cone(t, bottomR, topR) { return bottomR + (topR - bottomR) * t; },
         bulge(t, bottomR, topR) {
@@ -498,8 +539,8 @@ const LampshadeGeometry = (() => {
     };
 
     function generate(params) {
-        const { profile = 'wave', bottomDiameter = 100, topDiameter = 120, height = 100,
-                sides = 64, layerHeight = 0.16, waveAmplitude = 1.5, waveFrequency = 6,
+        const { profile = 'woojWavy', bottomDiameter = 100, topDiameter = 120, height = 120,
+                sides = 96, layerHeight = 0.20, waveAmplitude = 1.5, waveFrequency = 6,
                 verticalWaves = 3 } = params;
         const bottomR = bottomDiameter / 2, topR = topDiameter / 2;
         const profileFn = profiles[profile] || profiles.cylinder;
@@ -558,14 +599,16 @@ const LampshadeGeometry = (() => {
     function buildWireframe(rings) {
         const geometry = new THREE.BufferGeometry();
         const vertices = [], sides = rings[0].length, layers = rings.length;
-        const layerStep = Math.max(1, Math.floor(layers / 40));
+        // Show many more layer rings — individual layer lines are the aesthetic
+        const layerStep = Math.max(1, Math.floor(layers / 250));
         for (let l = 0; l < layers; l += layerStep) {
             for (let s = 0; s < sides; s++) {
                 const s2 = (s + 1) % sides, p1 = rings[l][s], p2 = rings[l][s2];
                 vertices.push(p1.x, p1.z, p1.y, p2.x, p2.z, p2.y);
             }
         }
-        const segStep = Math.max(1, Math.floor(sides / 16));
+        // Very sparse vertical lines — emphasis is on horizontal layer lines
+        const segStep = Math.max(1, Math.floor(sides / 6));
         for (let s = 0; s < sides; s += segStep) {
             for (let l = 0; l < layers - 1; l++) {
                 const p1 = rings[l][s], p2 = rings[l + 1][s];
@@ -573,7 +616,7 @@ const LampshadeGeometry = (() => {
             }
         }
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        return new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: 0xe94560, transparent: true, opacity: 0.15 }));
+        return new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: 0xccbbaa, transparent: true, opacity: 0.22 }));
     }
 
     return { generate, buildMesh, buildWireframe, profiles };
@@ -749,24 +792,24 @@ const GcodePreview = (() => {
 const RealisticPreview = (() => {
     const MATERIALS = {
         pla: {
-            label: 'PLA', transmission: 0.12, roughness: 0.65, metalness: 0.0,
+            label: 'PLA', transmission: 0.18, roughness: 0.60, metalness: 0.0,
             ior: 1.46, clearcoat: 0.05, clearcoatRoughness: 0.7,
-            subsurfaceTint: [1.0, 0.92, 0.85], layerLineStrength: 0.35,
+            subsurfaceTint: [1.0, 0.92, 0.85], layerLineStrength: 0.70,
         },
         petg: {
-            label: 'PETG', transmission: 0.40, roughness: 0.25, metalness: 0.0,
+            label: 'PETG', transmission: 0.45, roughness: 0.22, metalness: 0.0,
             ior: 1.57, clearcoat: 0.3, clearcoatRoughness: 0.3,
-            subsurfaceTint: [1.0, 0.97, 0.95], layerLineStrength: 0.15,
+            subsurfaceTint: [1.0, 0.97, 0.95], layerLineStrength: 0.40,
         },
         silkPla: {
-            label: 'Silk PLA', transmission: 0.08, roughness: 0.15, metalness: 0.45,
+            label: 'Silk PLA', transmission: 0.10, roughness: 0.15, metalness: 0.45,
             ior: 1.46, clearcoat: 0.6, clearcoatRoughness: 0.1,
-            subsurfaceTint: [1.0, 0.95, 0.9], layerLineStrength: 0.10,
+            subsurfaceTint: [1.0, 0.95, 0.9], layerLineStrength: 0.25,
         },
         tpu: {
-            label: 'TPU', transmission: 0.22, roughness: 0.55, metalness: 0.0,
+            label: 'TPU', transmission: 0.25, roughness: 0.50, metalness: 0.0,
             ior: 1.5, clearcoat: 0.0, clearcoatRoughness: 0.9,
-            subsurfaceTint: [1.0, 0.95, 0.92], layerLineStrength: 0.20,
+            subsurfaceTint: [1.0, 0.95, 0.92], layerLineStrength: 0.45,
         },
     };
 
@@ -789,19 +832,32 @@ const RealisticPreview = (() => {
         );
     }
 
-    function generatePatternTexture(params, filamentColorHex, matPreset) {
-        const W = 512, H = 512, canvas = document.createElement('canvas');
+    function nearestPow2(n) { let p = 512; while (p < n) p *= 2; return Math.min(p, 4096); }
+
+    function generatePatternTexture(params, filamentColorHex, matPreset, layerLineVis) {
+        const { patternType='none', patternScale=10, patternDepth=50, layerHeight=0.16, height=100 } = params;
+        const layerCount = Math.ceil(height / layerHeight);
+        // Dynamic vertical resolution: at least 3px per layer so individual lines are visible
+        const W = 512, H = nearestPow2(layerCount * 3);
+        const canvas = document.createElement('canvas');
         canvas.width = W; canvas.height = H;
         const ctx = canvas.getContext('2d');
         const fc = new THREE.Color(filamentColorHex);
-        const { patternType='none', patternScale=10, patternDepth=50, layerHeight=0.16, height=100 } = params;
-        const layerCount = Math.ceil(height / layerHeight);
-        const lls = matPreset.layerLineStrength;
+        // Layer line strength scaled by visibility slider (0-100, default 75)
+        const visScale = (layerLineVis != null ? layerLineVis : 75) / 50;
+        const lls = Math.min(0.95, matPreset.layerLineStrength * visScale);
         const imageData = ctx.createImageData(W, H);
         const data = imageData.data;
         for (let py = 0; py < H; py++) {
             const vH = 1 - py / H;
-            const layerLine = 1.0 - lls * (1.0 - Math.abs(((vH * layerCount) % 1) - 0.5) * 2);
+            const layerPos = (vH * layerCount) % 1.0;
+            // Sharp groove at layer boundaries, wide ridge at center
+            // pow < 1 makes the transition sharper (narrow groove, wide plateau)
+            const groove = Math.pow(Math.sin(layerPos * Math.PI), 0.35);
+            // Subtle per-layer variation for organic realism
+            const layerIdx = Math.floor(vH * layerCount);
+            const variation = 1.0 - 0.025 * ((layerIdx * 7 + 13) % 17) / 17;
+            const layerLine = (1.0 - lls * (1.0 - groove)) * variation;
             for (let px = 0; px < W; px++) {
                 const u = px / W;
                 const wallMult = Patterns.sample(patternType, u, vH, patternScale, patternDepth);
@@ -815,52 +871,73 @@ const RealisticPreview = (() => {
         ctx.putImageData(imageData, 0, 0);
         const tex = new THREE.CanvasTexture(canvas);
         tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
         return tex;
     }
 
-    function generateEmissiveTexture(params, filamentColorHex, matPreset, bulbColor) {
-        const W = 512, H = 512, canvas = document.createElement('canvas');
+    function generateEmissiveTexture(params, filamentColorHex, matPreset, bulbColor, layerLineVis) {
+        const { patternType='none', patternScale=10, patternDepth=50, layerHeight=0.16, height=100 } = params;
+        const layerCount = Math.ceil(height / layerHeight);
+        // Match pattern texture resolution so layer lines align
+        const W = 512, H = nearestPow2(layerCount * 3);
+        const canvas = document.createElement('canvas');
         canvas.width = W; canvas.height = H;
         const ctx = canvas.getContext('2d');
         const fc = new THREE.Color(filamentColorHex);
         const tint = matPreset.subsurfaceTint;
-        const { patternType='none', patternScale=10, patternDepth=50 } = params;
         const baseTr = matPreset.transmission;
+        const visScale = (layerLineVis != null ? layerLineVis : 75) / 50;
+        const lls = Math.min(0.95, matPreset.layerLineStrength * visScale);
         const imageData = ctx.createImageData(W, H);
         const data = imageData.data;
         for (let py = 0; py < H; py++) {
             const v = 1 - py / H;
+            // Layer line groove calculation (same as pattern texture)
+            const layerPos = (v * layerCount) % 1.0;
+            const groove = Math.pow(Math.sin(layerPos * Math.PI), 0.35);
+            // At grooves (between layers), wall is thinner → more light passes through
+            const grooveTransmission = 1.0 + lls * 0.4 * (1.0 - groove);
             for (let px = 0; px < W; px++) {
                 const u = px / W;
                 const wm = Patterns.sample(patternType, u, v, patternScale, patternDepth);
                 const tr = wm < 0.1 ? 1.0 : baseTr * (1.0 - wm * 0.5);
+                const finalTr = tr * grooveTransmission;
                 const idx = (py * W + px) * 4;
-                data[idx]     = Math.min(255, Math.round(bulbColor.r * fc.r * tint[0] * tr * 255));
-                data[idx + 1] = Math.min(255, Math.round(bulbColor.g * fc.g * tint[1] * tr * 255));
-                data[idx + 2] = Math.min(255, Math.round(bulbColor.b * fc.b * tint[2] * tr * 255));
+                data[idx]     = Math.min(255, Math.round(bulbColor.r * fc.r * tint[0] * finalTr * 255));
+                data[idx + 1] = Math.min(255, Math.round(bulbColor.g * fc.g * tint[1] * finalTr * 255));
+                data[idx + 2] = Math.min(255, Math.round(bulbColor.b * fc.b * tint[2] * finalTr * 255));
                 data[idx + 3] = 255;
             }
         }
         ctx.putImageData(imageData, 0, 0);
         const tex = new THREE.CanvasTexture(canvas);
         tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
         return tex;
     }
 
     function build(rings, params, rp) {
         const { materialType='pla', filamentColor='#f5e6d0', roomBrightness=20,
-                bulbIntensity=80, bulbColorTemp=2700, bulbHeight=40 } = rp;
+                bulbIntensity=80, bulbColorTemp=2700, bulbHeight=40, layerLineVis=75 } = rp;
         const mat = MATERIALS[materialType] || MATERIALS.pla;
         const bulbColor = colorTempToRGB(bulbColorTemp);
         const group = new THREE.Group();
 
-        // Build geometry
+        // Build geometry with subtle per-layer ridge for visible layer lines
         const geo = new THREE.BufferGeometry();
         const verts = [], norms = [], uvs = [], idx = [];
         const sides = rings[0].length, layers = rings.length;
+        const ridgeDepth = (layerLineVis / 100) * 0.12; // subtle geometric ridge up to 0.12mm
         for (let l = 0; l < layers; l++) for (let s = 0; s < sides; s++) {
             const p = rings[l][s];
-            verts.push(p.x, p.z, p.y);
+            // Alternating layer radius for physical ridge effect
+            const ridgeOffset = (l % 2 === 0 ? 1 : -1) * ridgeDepth;
+            const r = Math.sqrt(p.x * p.x + p.y * p.y);
+            const newR = Math.max(0.1, r + ridgeOffset);
+            const scale = r > 0 ? newR / r : 1;
+            verts.push(p.x * scale, p.z, p.y * scale);
             const len = Math.sqrt(p.x*p.x + p.y*p.y) || 1;
             norms.push(p.x/len, 0, p.y/len);
             uvs.push(s/sides, l/(layers-1));
@@ -875,8 +952,8 @@ const RealisticPreview = (() => {
         geo.setIndex(idx);
         geo.computeVertexNormals();
 
-        const patTex = generatePatternTexture(params, filamentColor, mat);
-        const emTex = generateEmissiveTexture(params, filamentColor, mat, bulbColor);
+        const patTex = generatePatternTexture(params, filamentColor, mat, layerLineVis);
+        const emTex = generateEmissiveTexture(params, filamentColor, mat, bulbColor, layerLineVis);
 
         const material = new THREE.MeshPhysicalMaterial({
             map: patTex, emissiveMap: emTex, emissive: new THREE.Color(1,1,1),
@@ -973,7 +1050,7 @@ const RealisticPreview = (() => {
         'patternType','patternScale','patternDepth','baseRings','lipRings',
         'printSpeed','nozzleTemp','bedTemp','filamentDiameter','nozzleDiameter','retractionDist','spiralMode'
     ];
-    const realisticParamIds = ['materialType','filamentColor','roomBrightness','bulbIntensity','bulbColorTemp','bulbHeight'];
+    const realisticParamIds = ['materialType','filamentColor','roomBrightness','bulbIntensity','bulbColorTemp','bulbHeight','layerLineVis'];
 
     function getParams() {
         const p = {};
@@ -995,6 +1072,7 @@ const RealisticPreview = (() => {
             bulbIntensity: parseFloat(document.getElementById('bulbIntensity').value),
             bulbColorTemp: parseFloat(document.getElementById('bulbColorTemp').value),
             bulbHeight: parseFloat(document.getElementById('bulbHeight').value),
+            layerLineVis: parseFloat(document.getElementById('layerLineVis').value),
         };
     }
 
