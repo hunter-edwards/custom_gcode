@@ -78,10 +78,12 @@
         'profile', 'bottomDiameter', 'topDiameter', 'height', 'sides',
         'wallThickness', 'layerHeight',
         'waveAmplitude', 'waveFrequency', 'verticalWaves',
+        'rippleEnabled', 'rippleWaveType', 'rippleAmplitude', 'rippleFrequency',
+        'rippleTwist', 'rippleEnvelope', 'rippleSecondaryAmp', 'rippleSecondaryFreq',
         'patternType', 'patternScale', 'patternDepth',
         'baseRings', 'lipRings',
         'printSpeed', 'nozzleTemp', 'bedTemp', 'filamentDiameter',
-        'nozzleDiameter', 'retractionDist', 'spiralMode'
+        'nozzleDiameter', 'retractionDist', 'crossSection', 'spiralMode'
     ];
 
     // Realistic preview param IDs

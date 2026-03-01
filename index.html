@@ -85,6 +85,60 @@
                 </section>
 
                 <section class="control-group">
+                    <h2>Ripple Texture</h2>
+                    <label>
+                        <input type="checkbox" id="rippleEnabled"> Enable Ripple
+                    </label>
+                    <label>
+                        Wave Shape
+                        <select id="rippleWaveType">
+                            <option value="sine" selected>Sine</option>
+                            <option value="triangle">Triangle</option>
+                            <option value="square">Square</option>
+                            <option value="sawtooth">Sawtooth</option>
+                            <option value="star">Star Tips</option>
+                            <option value="petal">Petal</option>
+                        </select>
+                    </label>
+                    <label>
+                        Ripple Amplitude (mm)
+                        <input type="range" id="rippleAmplitude" min="0" max="15" value="5" step="0.5">
+                        <span class="val" data-for="rippleAmplitude">5</span>
+                    </label>
+                    <label>
+                        Ripple Frequency
+                        <input type="range" id="rippleFrequency" min="1" max="24" value="6" step="1">
+                        <span class="val" data-for="rippleFrequency">6</span>
+                    </label>
+                    <label>
+                        Twist (&deg;)
+                        <input type="range" id="rippleTwist" min="0" max="720" value="0" step="5">
+                        <span class="val" data-for="rippleTwist">0</span>
+                    </label>
+                    <label>
+                        Amplitude Envelope
+                        <select id="rippleEnvelope">
+                            <option value="constant" selected>Constant</option>
+                            <option value="bulge">Bulge (mid peak)</option>
+                            <option value="fadeIn">Fade In</option>
+                            <option value="fadeOut">Fade Out</option>
+                            <option value="diamond">Diamond</option>
+                            <option value="gaussian">Gaussian</option>
+                        </select>
+                    </label>
+                    <label>
+                        Secondary Amplitude (mm)
+                        <input type="range" id="rippleSecondaryAmp" min="0" max="8" value="0" step="0.5">
+                        <span class="val" data-for="rippleSecondaryAmp">0</span>
+                    </label>
+                    <label>
+                        Secondary Frequency
+                        <input type="range" id="rippleSecondaryFreq" min="1" max="20" value="3" step="1">
+                        <span class="val" data-for="rippleSecondaryFreq">3</span>
+                    </label>
+                </section>
+
+                <section class="control-group">
                     <h2>Pattern</h2>
                     <label>
                         Pattern Type
@@ -196,6 +250,14 @@
                         <span class="val" data-for="retractionDist">0.8</span>
                     </label>
                     <label>
+                        Bead Cross-Section
+                        <select id="crossSection">
+                            <option value="stadium" selected>Stadium (Recommended)</option>
+                            <option value="rectangle">Rectangle</option>
+                            <option value="circle">Circle</option>
+                        </select>
+                    </label>
+                    <label>
                         <input type="checkbox" id="spiralMode"> Spiral (Vase) Mode
                     </label>
                 </section>
@@ -230,6 +292,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
+    <script src="waves.js"></script>
     <script src="lampshade-geometry.js"></script>
     <script src="patterns.js"></script>
     <script src="gcode-generator.js"></script>

@@ -14,6 +14,29 @@
 const GcodeGenerator = (() => {
 
     /**
+     * Cross-section area models for extrusion calculation.
+     * Given extrusion width (w) and layer height (h), compute the bead cross-section area.
+     * Inspired by FullControl's extrusion geometry models.
+     */
+    const crossSectionModels = {
+        /** Rectangle: w * h — simple, slightly over-estimates. */
+        rectangle(w, h) {
+            return w * h;
+        },
+        /** Stadium: rectangle with semicircle caps — most accurate for FDM beads. */
+        stadium(w, h) {
+            // (w - h) * h  +  π * (h/2)²
+            // Only valid when w >= h; clamp to circle otherwise.
+            if (w <= h) return Math.PI * (w / 2) ** 2;
+            return (w - h) * h + Math.PI * (h / 2) ** 2;
+        },
+        /** Circle: π * (w/2)² — for round beads (bridging, very thin layers). */
+        circle(w, h) {
+            return Math.PI * (w / 2) ** 2;
+        },
+    };
+
+    /**
      * Generate complete G-code for the lampshade.
      *
      * @param {Array} rings — ring data from LampshadeGeometry.generate()
@@ -39,6 +62,7 @@ const GcodeGenerator = (() => {
             lipRings = 2,
             spiralMode = false,
             waveAmplitude = 1.5,
+            crossSection = 'stadium',
         } = params;
 
         const lines = [];
@@ -48,11 +72,12 @@ const GcodeGenerator = (() => {
         let totalMoves = 0;
 
         const filamentArea = Math.PI * (filamentDiameter / 2) ** 2;
-        const nozzleArea = nozzleDiameter * layerHeight; // simplified cross-section
 
-        // Extrusion multiplier: volume-based
+        // Extrusion width and cross-section model
         const extrusionWidth = nozzleDiameter * 1.05; // slight over-extrusion for adhesion
-        const extrusionMultiplier = (extrusionWidth * layerHeight) / filamentArea;
+        const csModel = crossSectionModels[crossSection] || crossSectionModels.stadium;
+        const beadArea = csModel(extrusionWidth, layerHeight);
+        const extrusionMultiplier = beadArea / filamentArea;
 
         function emitLine(text) {
             lines.push(text);
@@ -94,6 +119,8 @@ const GcodeGenerator = (() => {
         emitLine(`; Layer height: ${layerHeight}mm`);
         emitLine(`; Wall thickness: ${wallThickness}mm`);
         emitLine(`; Non-planar amplitude: ${waveAmplitude}mm`);
+        emitLine(`; Cross-section model: ${crossSection}`);
+        emitLine(`; Bead area: ${beadArea.toFixed(4)}mm²`);
         emitLine(`; Pattern: ${patternType}`);
         emitLine('');
         emitLine('; ====== START GCODE ======');

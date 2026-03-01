@@ -51,9 +51,19 @@ const LampshadeGeometry = (() => {
             height = 100,
             sides = 64,
             layerHeight = 0.16,
+            // Non-planar Z waves
             waveAmplitude = 1.5,
             waveFrequency = 6,
             verticalWaves = 3,
+            // Ripple texture — radial surface modulation
+            rippleEnabled = false,
+            rippleWaveType = 'sine',
+            rippleAmplitude = 5,
+            rippleFrequency = 6,
+            rippleTwist = 0,
+            rippleEnvelope = 'constant',
+            rippleSecondaryAmp = 0,
+            rippleSecondaryFreq = 3,
         } = params;
 
         const bottomR = bottomDiameter / 2;
@@ -62,28 +72,60 @@ const LampshadeGeometry = (() => {
         const layerCount = Math.ceil(height / layerHeight);
         const rings = [];
 
+        // Resolve wave and envelope functions from the Waves library
+        const rippleWaveFn = (typeof Waves !== 'undefined') ? Waves.getWaveFn(rippleWaveType) : Math.sin;
+        const envelopeFn = (typeof Waves !== 'undefined') ? Waves.getEnvelope(rippleEnvelope) : () => 1;
+        const TAU = Math.PI * 2;
+
+        // Twist: total angular rotation (degrees → radians) over full height
+        const twistRad = (rippleTwist / 360) * TAU;
+
         for (let layer = 0; layer <= layerCount; layer++) {
             const t = layer / layerCount;
             const z = t * height;
             const baseRadius = profileFn(t, bottomR, topR);
             const ring = [];
 
-            for (let s = 0; s < sides; s++) {
-                const angle = (s / sides) * Math.PI * 2;
+            // Ripple envelope at this height
+            const envAmp = envelopeFn(t);
+            // Progressive twist offset at this height
+            const twistOffset = t * twistRad;
 
-                // Non-planar Z offset: sinusoidal wave around the circumference
+            for (let s = 0; s < sides; s++) {
+                const angle = (s / sides) * TAU;
+
+                // === Non-planar Z offset ===
                 let zOffset = 0;
                 if (waveAmplitude > 0) {
-                    zOffset = waveAmplitude * Math.sin(angle * waveFrequency + t * verticalWaves * Math.PI * 2);
+                    zOffset = waveAmplitude * Math.sin(angle * waveFrequency + t * verticalWaves * TAU);
                 }
 
-                // Radius variation from vertical waves
+                // === Radius variation from existing vertical waves ===
                 let rOffset = 0;
                 if (verticalWaves > 0 && waveAmplitude > 0) {
                     rOffset = (waveAmplitude * 0.3) * Math.cos(angle * waveFrequency * 0.5 + t * verticalWaves * Math.PI);
                 }
 
-                const r = baseRadius + rOffset;
+                // === Ripple texture — radial modulation ===
+                let rippleOffset = 0;
+                if (rippleEnabled && rippleAmplitude > 0) {
+                    // Primary ripple: wave function around circumference with twist
+                    const rippleAngle = angle + twistOffset;
+                    rippleOffset = rippleWaveFn(
+                        rippleAngle, rippleAmplitude, rippleFrequency, 0,
+                        rippleWaveType === 'star' ? 2 : 0.5
+                    ) * envAmp;
+
+                    // Secondary harmonic: adds complexity / "scalloped" details
+                    if (rippleSecondaryAmp > 0) {
+                        const secWave = Waves.sine(
+                            rippleAngle, rippleSecondaryAmp, rippleSecondaryFreq, Math.PI / 4
+                        );
+                        rippleOffset += secWave * envAmp;
+                    }
+                }
+
+                const r = baseRadius + rOffset + rippleOffset;
                 ring.push({
                     x: r * Math.cos(angle),
                     y: r * Math.sin(angle),
