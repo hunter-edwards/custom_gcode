@@ -249,8 +249,27 @@
         return a.lerp(b, t);
     }
 
+    // ===== Pyodide Initialization =====
+    let fcReady = false;
+    const badge = document.getElementById('engineBadge');
+
+    (async function initFullControl() {
+        try {
+            await PyodideRunner.init((msg, progress) => {
+                badge.textContent = msg;
+            });
+            fcReady = true;
+            badge.textContent = 'FullControl';
+            badge.className = 'engine-badge ready';
+        } catch (err) {
+            console.warn('FullControl init failed, using JS fallback:', err);
+            badge.textContent = 'JS Engine (fallback)';
+            badge.className = 'engine-badge fallback';
+        }
+    })();
+
     // ===== G-code Generation =====
-    document.getElementById('btnGenerate').addEventListener('click', () => {
+    document.getElementById('btnGenerate').addEventListener('click', async () => {
         const params = getParams();
 
         // Validate
@@ -263,45 +282,53 @@
         btn.textContent = 'Generating...';
         btn.disabled = true;
 
-        // Use setTimeout to allow UI to update
-        setTimeout(() => {
-            try {
+        try {
+            let result;
+
+            if (fcReady) {
+                // Use FullControl via Pyodide
+                const fcResult = await PyodideRunner.generate(params);
+                generatedGcode = fcResult.gcode;
+                result = {
+                    stats: fcResult.stats,
+                    toolpaths: fcResult.toolpaths,
+                };
+            } else {
+                // Fallback to JS engine
                 const { rings } = LampshadeGeometry.generate(params);
-                const result = GcodeGenerator.generate(rings, params);
-
-                generatedGcode = result.gcode;
-
-                // Update stats
-                document.getElementById('statLayers').textContent = result.stats.layers;
-                document.getElementById('statTime').textContent = result.stats.estimatedTime;
-                document.getElementById('statFilament').textContent = result.stats.filamentM + ' m';
-                document.getElementById('statLines').textContent = result.stats.lines.toLocaleString();
-                document.getElementById('stats').style.display = 'grid';
-
-                // Build gcode preview
-                if (gcodePreviewObj) {
-                    scene.remove(gcodePreviewObj);
-                    gcodePreviewObj.traverse(child => {
-                        if (child.geometry) child.geometry.dispose();
-                        if (child.material) child.material.dispose();
-                    });
-                }
-                gcodePreviewObj = GcodePreview.build(result.toolpaths, result.stats.layers);
-                scene.add(gcodePreviewObj);
-                gcodePreviewObj.visible = (currentView === 'gcode');
-
-                // Enable download
-                document.getElementById('btnDownload').disabled = false;
-
-                btn.textContent = 'Generate G-code';
-                btn.disabled = false;
-            } catch (err) {
-                console.error('G-code generation failed:', err);
-                alert('Error generating G-code: ' + err.message);
-                btn.textContent = 'Generate G-code';
-                btn.disabled = false;
+                const jsResult = GcodeGenerator.generate(rings, params);
+                generatedGcode = jsResult.gcode;
+                result = jsResult;
             }
-        }, 50);
+
+            // Update stats
+            document.getElementById('statLayers').textContent = result.stats.layers;
+            document.getElementById('statTime').textContent = result.stats.estimatedTime;
+            document.getElementById('statFilament').textContent = (result.stats.filamentM || '0') + ' m';
+            document.getElementById('statLines').textContent = result.stats.lines.toLocaleString();
+            document.getElementById('stats').style.display = 'grid';
+
+            // Build gcode preview
+            if (gcodePreviewObj) {
+                scene.remove(gcodePreviewObj);
+                gcodePreviewObj.traverse(child => {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                });
+            }
+            gcodePreviewObj = GcodePreview.build(result.toolpaths, result.stats.layers);
+            scene.add(gcodePreviewObj);
+            gcodePreviewObj.visible = (currentView === 'gcode');
+
+            // Enable download
+            document.getElementById('btnDownload').disabled = false;
+        } catch (err) {
+            console.error('G-code generation failed:', err);
+            alert('Error generating G-code: ' + err.message);
+        } finally {
+            btn.textContent = fcReady ? 'Generate G-code (FullControl)' : 'Generate G-code';
+            btn.disabled = false;
+        }
     });
 
     // ===== Download =====

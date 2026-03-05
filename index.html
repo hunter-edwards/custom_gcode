@@ -11,6 +11,7 @@
         <header>
             <h1>Lampshade Generator</h1>
             <span class="subtitle">Non-Planar G-code for Bambu Lab A1 Mini</span>
+            <span id="engineBadge" class="engine-badge loading">Loading FullControl...</span>
         </header>
 
         <div class="main-layout">
@@ -291,6 +292,8 @@
     <!-- Three.js from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Pyodide (Python in the browser) -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js"></script>
 
     <script src="waves.js"></script>
     <script src="lampshade-geometry.js"></script>
@@ -298,6 +301,7 @@
     <script src="gcode-generator.js"></script>
     <script src="gcode-preview.js"></script>
     <script src="realistic-preview.js"></script>
+    <script src="pyodide-runner.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

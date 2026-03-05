@@ -327,3 +327,29 @@ input[type="checkbox"] {
         border-bottom: 1px solid var(--surface2);
     }
 }
+
+/* Engine badge */
+.engine-badge {
+    font-size: 0.72rem;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.engine-badge.loading {
+    background: var(--surface2);
+    color: var(--text-dim);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+.engine-badge.ready {
+    background: #1b4332;
+    color: #95d5b2;
+}
+.engine-badge.fallback {
+    background: #432a1b;
+    color: #d5b295;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
